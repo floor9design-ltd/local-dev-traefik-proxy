@@ -38,3 +38,94 @@ mkdir -p ~/docker
 cd ~/docker
 git clone git@github.com:your-org/local-dev-traefik-proxy.git
 cd local-dev-traefik-proxy
+```
+
+### 2. Generate the dev certificate
+
+```bash
+./scripts/generate-cert.sh
+```
+
+This creates:
+
+* `certs/dev.crt`
+* `certs/dev.key`
+
+These files are not committed (see certs/.gitignore).
+
+### 3. Trust the certificate (Linux Mint)
+
+One-time step so browsers accept https://*.test:
+
+```bash
+sudo cp certs/dev.crt /usr/local/share/ca-certificates/local-dev-traefik.crt
+sudo update-ca-certificates
+```
+
+### 4. Start Traefik
+
+```bash
+docker compose up -d
+```
+
+This:
+
+* Runs Traefik on `80` and `443`.
+* Creates the web network. 
+
+You generally leave this running while you develop.
+
+Using with a project
+
+In any project you want to expose via this proxy:
+
+1. Add a domain to /etc/hosts:
+
+```bash
+127.0.0.1   myapp.test
+```
+
+2. In that project's `docker-compose.yml`, for the web (nginx) service:
+
+* Attach to the shared web network:
+
+```yaml
+networks:
+  - default
+  - web
+```
+
+* Add Traefik labels:
+
+```yaml
+labels:
+- "traefik.enable=true"
+- "traefik.http.routers.myapp.rule=Host(`myapp.test`)"
+- "traefik.http.routers.myapp.entrypoints=websecure"
+- "traefik.http.routers.myapp.tls=true"
+```
+
+3. Declare the external network:
+ 
+```yaml
+networks:
+  web:
+    external: true
+```
+
+4. Bring the project up:
+
+```bash
+docker compose up -d
+```
+
+Now:
+
+* https://myapp.test → that project's container.
+* You can run multiple projects (foo.test, bar.test, etc.) in parallel, all via this shared proxy.
+
+## Notes / Conventions
+
+* This stack is dev-only. Do not use this cert or config in production.
+* All .test domains are expected to resolve to 127.0.0.1 on your dev machine.
+* Projects should not expose ports directly on the host when using this proxy; Traefik terminates TLS and routes by Host.
