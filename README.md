@@ -31,16 +31,8 @@ No PHP, no Node, no Composer required on the host.
 
 ## Setup
 
-### 1. Clone this repo
-
-```bash
-mkdir -p ~/docker
-cd ~/docker
-git clone git@github.com:your-org/local-dev-traefik-proxy.git
-cd local-dev-traefik-proxy
-```
-
-### 2. Generate the dev certificate
+1. Clone this repo
+2. Generate the dev certificate
 
 ```bash
 ./scripts/generate-cert.sh
@@ -53,7 +45,7 @@ This creates:
 
 These files are not committed (see certs/.gitignore).
 
-### 3. Trust the certificate (Linux Mint)
+3. Trust the certificate (Linux Mint)
 
 One-time step so browsers accept https://*.test:
 
@@ -62,7 +54,7 @@ sudo cp certs/dev.crt /usr/local/share/ca-certificates/local-dev-traefik.crt
 sudo update-ca-certificates
 ```
 
-### 4. Start Traefik
+4. Start Traefik
 
 ```bash
 docker compose up -d
@@ -75,7 +67,7 @@ This:
 
 You generally leave this running while you develop.
 
-Using with a project
+## Using with a project
 
 In any project you want to expose via this proxy:
 
