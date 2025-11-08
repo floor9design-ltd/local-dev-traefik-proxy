@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  traefik:
+    image: traefik:v3.1
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      # Enable Docker provider
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+
+      # HTTP / HTTPS entrypoints
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+
+      # Default TLS cert for all dev hosts
+      - "--tls.stores.default.defaultCertificate.certFile=/certs/dev.crt"
+      - "--tls.stores.default.defaultCertificate.keyFile=/certs/dev.key"
+
+    ports:
+      - "80:80"
+      - "443:443"
+
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./certs:/certs:ro"
+
+    networks:
+      - web
+
+networks:
+  web:
+    name: web
+    external: false
