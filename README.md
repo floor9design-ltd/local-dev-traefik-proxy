@@ -119,5 +119,5 @@ Now:
 ## Notes / Conventions
 
 * This stack is dev-only. Do not use this cert or config in production.
-* All .test domains are expected to resolve to 127.0.0.1 on your dev machine.
+* All `.test` domains are expected to resolve to `127.0.0.1` on your dev machine.
 * Projects should not expose ports directly on the host when using this proxy; Traefik terminates TLS and routes by Host.
