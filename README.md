@@ -35,7 +35,7 @@ No PHP, no Node, no Composer required on the host.
 2. Generate the dev certificate
 
 ```bash
-./scripts/generate-cert.sh
+./scripts/generate-certs.sh
 ```
 
 This creates:
@@ -104,8 +104,27 @@ networks:
   web:
     external: true
 ```
+4. Trust the proxy:
 
-4. Bring the project up:
+In Laravel, forms and URL generation can generate insecure warnings. To remedy this, navigate to `bootstrap/app.php`. 
+Add the following section at around line 14:
+
+```php
+
+    ->withMiddleware(function (Middleware $middleware): void {
+        // fix local development with proxies
+        $middleware->trustProxies(
+            at: '*',
+            headers: Request::HEADER_X_FORWARDED_FOR
+            | Request::HEADER_X_FORWARDED_HOST
+            | Request::HEADER_X_FORWARDED_PORT
+            | Request::HEADER_X_FORWARDED_PROTO
+        );
+    })
+
+```
+
+5. Bring the project up:
 
 ```bash
 docker compose up -d
