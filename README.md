@@ -33,8 +33,12 @@ No PHP, no Node, no Composer required on the host.
 
 1. Clone this repo
 2. Generate the dev certificate
+3. Trust the certificates
+
+If you already have this setup, then a separate script is build for day to day use:
 
 ```bash
+# generate them the first time
 ./scripts/generate-certs.sh
 ```
 
@@ -53,6 +57,14 @@ One-time step so browsers accept https://*.test:
 sudo cp certs/dev.crt /usr/local/share/ca-certificates/local-dev-traefik.crt
 sudo update-ca-certificates
 ```
+
+2/3. Alternate:
+
+```bash
+# regenerate certs and trust them - "do all the things"
+./scripts/generate-dev-cert.sh
+```
+
 
 4. Start Traefik
 
@@ -121,6 +133,34 @@ Add the following section at around line 14:
             | Request::HEADER_X_FORWARDED_PROTO
         );
     })
+
+```
+
+Or, if using older Laravel projects before the structure change, you should edit `app/Http/Middleware/TrustProxies.php`
+
+```php
+
+    /**
+     * The trusted proxies for this application.
+     *
+     * Use "*" to trust all proxies (useful for local Docker / dev).
+     *
+     * @var array<int, string>|string|null
+     */
+    protected $proxies = '*';
+
+    /**
+     * The headers that should be used to detect proxies.
+     *
+     * Match what you're doing in bootstrap/app.php in the new app.
+     *
+     * @var int
+     */
+    protected $headers =
+        Request::HEADER_X_FORWARDED_FOR
+        | Request::HEADER_X_FORWARDED_HOST
+        | Request::HEADER_X_FORWARDED_PORT
+        | Request::HEADER_X_FORWARDED_PROTO;
 
 ```
 
