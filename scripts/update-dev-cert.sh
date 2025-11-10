@@ -111,5 +111,5 @@ echo "  ${CERT_DIR}/dev.key"
 echo
 echo "Next:"
 echo "  1) If this was the first run, trust local-dev-traefik-ca.crt once."
-echo "  2) Restart Traefik: docker compose up -d"
+echo "  2) Restart Traefik: docker compose restart traefik"
 echo "  3) Add new domains to /etc/hosts as needed."
