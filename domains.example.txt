@@ -1,2 +1,9 @@
+# One domain per line.
+# The first domain becomes the certificate common name (CN).
+# All domains in this file are added as certificate SANs.
+# After updating this file, regenerate certs and update your hosts file as needed.
+
 myapp.test
-# add more lines as needed:
+admin.myapp.test
+api.myapp.test
+# add more lines as needed
