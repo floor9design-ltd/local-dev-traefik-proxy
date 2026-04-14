@@ -2,71 +2,90 @@
 
 A minimal Traefik-based reverse proxy for local development.
 
-This repo provides a shared HTTPS front-end and Docker network for multiple local projects, so each app can run at its own `*.test` domain without installing PHP/Node/etc. on the host.
+This repo provides a shared HTTPS front-end and Docker network for multiple local projects, so each app can run at its own `*.test` domain without installing PHP, Node, Composer, or other runtime tooling directly on the host.
 
 ## Goals
 
-- **One proxy, many apps**: run multiple Laravel / Node / whatever projects in parallel.
+- **One proxy, many apps**: run multiple Laravel, Node, or other Dockerised projects in parallel.
 - **Clean separation**: this repo is infra-only; apps live in their own repos.
-- **HTTPS by default**: self-signed wildcard cert for `*.test`.
+- **HTTPS by default**: local TLS for `*.test` domains.
 - **No host pollution**: only Docker and your editor on the host OS.
 
 ## How it works
 
 - Starts a single Traefik container on ports `80` and `443`.
 - Creates a shared Docker network called `web`.
-- Uses a locally generated self-signed cert as the default TLS cert.
+- Uses a locally generated certificate as the default TLS certificate.
 - Individual projects:
-    - Attach their `web` (nginx) service to the `web` network.
-    - Opt-in via Traefik labels.
-    - Declare their own `myapp.test` (or similar) hostnames.
+  - attach their web service to the `web` network
+  - opt in via Traefik labels
+  - declare their own `myapp.test` (or similar) hostnames
 
 ## Requirements
 
 - Docker
-- docker compose plugin (v2+)
-- Linux host (tested on Linux Mint; works anywhere Docker does)
+- Docker Compose plugin (`docker compose`, v2+)
 
-No PHP, no Node, no Composer required on the host.
+Tested on Linux Mint.
+
+This setup should also work on other platforms that support Docker, though certificate trust steps may vary by OS and browser.
+
+No PHP, Node, Composer, or framework tooling is required on the host.
 
 ## Setup
 
-1. Clone this repo
-2. Generate the dev certificate
-3. Trust the certificates
-
-If you already have this setup, then a separate script is build for day to day use:
+### 1. Clone this repo
 
 ```bash
-# generate them the first time
+git clone <repo-url>
+cd local-dev-traefik-proxy
+```
+
+### 2. Create your local domain list
+
+Copy the example file:
+
+```bash
+cp domains.example.txt domains.txt
+```
+
+Then edit `domains.txt` and add one domain per line, for example:
+
+```txt
+myapp.test
+admin.myapp.test
+api.myapp.test
+```
+
+### 3. Generate the local development certificates
+
+```bash
 ./scripts/generate-certs.sh
 ```
 
 This creates:
 
-* `certs/dev.crt`
-* `certs/dev.key`
+- `certs/local-dev-traefik-ca.crt`
+- `certs/local-dev-traefik-ca.key`
+- `certs/dev.crt`
+- `certs/dev.key`
 
-These files are not committed (see certs/.gitignore).
+These files are not committed.
 
-3. Trust the certificate (Linux Mint)
+### 4. Trust the local CA certificate
 
-One-time step so browsers accept https://*.test:
+One-time step so browsers and tools accept your local HTTPS certificates.
+
+#### Linux Mint / Debian-based Linux
 
 ```bash
-sudo cp certs/dev.crt /usr/local/share/ca-certificates/local-dev-traefik.crt
+sudo cp certs/local-dev-traefik-ca.crt /usr/local/share/ca-certificates/local-dev-traefik-ca.crt
 sudo update-ca-certificates
 ```
 
-2/3. Alternate:
+You may also need to import the CA into Firefox separately, depending on local browser settings.
 
-```bash
-# regenerate certs and trust them - "do all the things"
-./scripts/generate-dev-cert.sh
-```
-
-
-4. Start Traefik
+### 5. Start Traefik
 
 ```bash
 docker compose up -d
@@ -74,97 +93,92 @@ docker compose up -d
 
 This:
 
-* Runs Traefik on `80` and `443`.
-* Creates the web network. 
+- runs Traefik on ports `80` and `443`
+- creates the shared `web` network
 
-You generally leave this running while you develop.
+You would generally leave this running while developing.
+
+## Day-to-day certificate updates
+
+If you already have the CA trusted and simply need to regenerate the leaf certificate after editing `domains.txt`, run the normal certificate generation script again:
+
+```bash
+./scripts/generate-certs.sh
+```
+
+Then restart the Traefik container from this repo.
 
 ## Using with a project
 
-In any project you want to expose via this proxy:
+In any project you want to expose through this proxy:
 
-1. Add a domain to /etc/hosts:
+### 1. Add the domain to your hosts file
+
+For example:
 
 ```bash
-127.0.0.1   myapp.test
+127.0.0.1 myapp.test
 ```
 
-2. In that project's `docker-compose.yml`, for the web (nginx) service:
+### 2. Attach the project web service to the shared `web` network
 
-* Attach to the shared web network:
+In that project's `docker-compose.yml`:
 
 ```yaml
-networks:
-  - default
-  - web
+services:
+  web:
+    networks:
+      - default
+      - web
 ```
 
-* Add Traefik labels:
+### 3. Add Traefik labels to the web service
 
 ```yaml
 labels:
-- "traefik.enable=true"
-- "traefik.http.routers.myapp.rule=Host(`myapp.test`)"
-- "traefik.http.routers.myapp.entrypoints=websecure"
-- "traefik.http.routers.myapp.tls=true"
+  - "traefik.enable=true"
+  - "traefik.http.routers.myapp.rule=Host(`myapp.test`)"
+  - "traefik.http.routers.myapp.entrypoints=websecure"
+  - "traefik.http.routers.myapp.tls=true"
 ```
 
-3. Declare the external network:
- 
+### 4. Declare the shared external network in the project
+
 ```yaml
 networks:
   web:
     external: true
 ```
-4. Trust the proxy:
 
-In Laravel, forms and URL generation can generate insecure warnings. To remedy this, navigate to `bootstrap/app.php`. 
-Add the following section at around line 14:
+### 5. Configure Laravel to trust the proxy
+
+For Laravel 11+ style bootstrap configuration, update `bootstrap/app.php`:
 
 ```php
-
-    ->withMiddleware(function (Middleware $middleware): void {
-        // fix local development with proxies
-        $middleware->trustProxies(
-            at: '*',
-            headers: Request::HEADER_X_FORWARDED_FOR
+->withMiddleware(function (Middleware $middleware): void {
+    $middleware->trustProxies(
+        at: '*',
+        headers: Request::HEADER_X_FORWARDED_FOR
             | Request::HEADER_X_FORWARDED_HOST
             | Request::HEADER_X_FORWARDED_PORT
-            | Request::HEADER_X_FORWARDED_PROTO
-        );
-    })
-
+            | Request::HEADER_X_FORWARDED_PROTO,
+    );
+})
 ```
 
-Or, if using older Laravel projects before the structure change, you should edit `app/Http/Middleware/TrustProxies.php`
+For older Laravel projects, update `app/Http/Middleware/TrustProxies.php`:
 
 ```php
+protected $proxies = '*';
 
-    /**
-     * The trusted proxies for this application.
-     *
-     * Use "*" to trust all proxies (useful for local Docker / dev).
-     *
-     * @var array<int, string>|string|null
-     */
-    protected $proxies = '*';
-
-    /**
-     * The headers that should be used to detect proxies.
-     *
-     * Match what you're doing in bootstrap/app.php in the new app.
-     *
-     * @var int
-     */
-    protected $headers =
-        Request::HEADER_X_FORWARDED_FOR
-        | Request::HEADER_X_FORWARDED_HOST
-        | Request::HEADER_X_FORWARDED_PORT
-        | Request::HEADER_X_FORWARDED_PROTO;
-
+protected $headers =
+    Request::HEADER_X_FORWARDED_FOR
+    | Request::HEADER_X_FORWARDED_HOST
+    | Request::HEADER_X_FORWARDED_PORT
+    | Request::HEADER_X_FORWARDED_PROTO;
 ```
 
-5. Bring the project up:
+### 6. Bring the project up
 
 ```bash
 docker compose up -d
@@ -172,11 +186,12 @@ docker compose up -d
 
 Now:
 
-* https://myapp.test → that project's container.
-* You can run multiple projects (foo.test, bar.test, etc.) in parallel, all via this shared proxy.
+- `https://myapp.test` routes to that project's container
+- multiple projects can run in parallel, each on its own `*.test` domain
 
 ## Notes / Conventions
 
-* This stack is dev-only. Do not use this cert or config in production.
-* All `.test` domains are expected to resolve to `127.0.0.1` on your dev machine.
-* Projects should not expose ports directly on the host when using this proxy; Traefik terminates TLS and routes by Host.
+- This stack is for local development only.
+- Do not use this certificate or configuration in production.
+- All `*.test` domains are expected to resolve to `127.0.0.1` on the local machine.
+- Projects should not expose their own HTTP ports directly on the host when using this proxy; Traefik handles TLS termination and host-based routing.
