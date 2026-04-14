@@ -87,7 +87,7 @@ subjectAltName = @alt_names
 EOF
 
     i=1
-    while read -r domain; do
+    while IFS= read -r domain || [ -n "$domain" ]; do
       [ -z "$domain" ] && continue
       case "$domain" in \#*) continue ;; esac
       echo "DNS.$i = $domain" >> /tmp/leaf.cnf
