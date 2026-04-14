@@ -103,7 +103,7 @@ You would generally leave this running while developing.
 If you already have the CA trusted and simply need to regenerate the leaf certificate after editing `domains.txt`, run the normal certificate generation script again:
 
 ```bash
-./scripts/generate-certs.sh
+./scripts/update-dev-cert.sh
 ```
 
 Then restart the Traefik container from this repo.
