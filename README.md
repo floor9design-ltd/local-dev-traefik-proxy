@@ -60,7 +60,7 @@ api.myapp.test
 ### 3. Generate the local development certificates
 
 ```bash
-./scripts/generate-certs.sh
+./scripts/update-dev-cert.sh
 ```
 
 This creates:
