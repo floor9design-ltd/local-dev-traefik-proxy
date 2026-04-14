@@ -14,6 +14,12 @@ if [[ ! -f "${DOMAINS_FILE}" ]]; then
   exit 1
 fi
 
+if ! docker info >/dev/null 2>&1; then
+  echo "Error: Docker is not running."
+  echo "Start Docker and try again."
+  exit 1
+fi
+
 # Load domains (ignore blank/comment lines)
 mapfile -t DOMAINS < <(grep -Ev '^\s*($|#)' "${DOMAINS_FILE}" || true)
 
@@ -104,6 +110,9 @@ EOF
       -extfile /tmp/leaf.cnf
 '
 
+chmod 600 "${CERT_DIR}/local-dev-traefik-ca.key" "${CERT_DIR}/dev.key" 2>/dev/null || true
+chmod 644 "${CERT_DIR}/local-dev-traefik-ca.crt" "${CERT_DIR}/dev.crt" 2>/dev/null || true
+
 echo
 echo "Updated dev cert:"
 echo "  ${CERT_DIR}/dev.crt"
@@ -111,5 +120,5 @@ echo "  ${CERT_DIR}/dev.key"
 echo
 echo "Next:"
 echo "  1) If this was the first run, trust local-dev-traefik-ca.crt once."
-echo "  2) Restart Traefik: docker compose restart traefik"
-echo "  3) Add new domains to /etc/hosts as needed."
+echo "  2) Restart the Traefik container from the proxy project directory."
+echo "  3) Add new domains to your hosts file as needed."
