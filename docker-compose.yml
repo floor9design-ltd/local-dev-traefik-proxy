@@ -2,7 +2,6 @@ services:
   traefik:
     image: traefik:v3.6
     container_name: traefik
-    restart: unless-stopped
     command:
       # Enable Docker provider
       - "--providers.docker=true"
